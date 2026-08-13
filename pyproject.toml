@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transcription-benchmark"
+version = "0.1.0"
+description = "Cost/accuracy/latency/diarization benchmark: dedicated ASR vs. multimodal chat models"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=2.26.0",
+    "google-genai>=1.0",
+    "httpx>=0.28.0",
+    "pydub>=0.25.1",
+    "python-dotenv>=1.2.2",
+    "numpy>=2.0",
+    "audioop-lts>=0.2.1; python_version >= '3.13'",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.408",
+    "ruff>=0.15.5",
+    "jiwer>=3.0",
+    "pytest>=8.0",
+    "matplotlib>=3.9",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (requires real API keys)",
+]
