@@ -61,8 +61,14 @@ Two categories, on purpose:
 ## Results (2026-08-13 run)
 
 See `docs/benchmarks/multimodal-transcription-2026-08-13/` for the full JSON report and PNG
-charts (cost vs. WER, latency, WER by synthetic/real-world, diarization accuracy, and a static
-controls-comparison table). Headline findings:
+charts. The cost-vs-WER scatter groups all real-world clips into one category (vs. synthetic);
+the three bar charts (latency, WER, diarization accuracy) instead show **each real-world clip
+as its own bar** rather than averaging them together — with clips spanning three different
+eras and recording qualities, one blended "real-world" bar hides exactly the per-clip variation
+these charts exist to surface (e.g. the JFK-Eisenhower 1962 Dictabelt is consistently far
+harder than the 2026 NASA podcast, on every metric).
+
+Headline findings:
 - `gpt-audio` (multimodal) is competitive with `gpt-4o-transcribe`'s (dedicated) WER on
   synthetic audio while costing roughly 6x more per minute — multimodal buys flexibility here,
   not accuracy.
@@ -71,6 +77,13 @@ controls-comparison table). Headline findings:
   two degraded historical recordings. The ranking shuffles too: `gpt-4o-transcribe-diarize`,
   strong on synthetic multi-speaker audio, is consistently among the worst performers on real
   audio.
+- **Reliability caveat**: on the JFK-Eisenhower clip specifically (the longest and most
+  degraded real-world fixture), both `gpt-4o-transcribe` and `gpt-4o-mini-transcribe` showed
+  large run-to-run swings on repeat calls with identical input (one `gpt-4o-mini-transcribe`
+  call scored WER > 1.0, indicating a badly corrupted/truncated response, while a same-input
+  retry produced a normal, mostly-accurate transcript). This wasn't observed on any synthetic
+  fixture. Treat single-run numbers on this specific clip as a noisier signal than the rest of
+  the report, not as each model's stable characteristic.
 
 Re-running will produce different numbers (models update, pricing changes, LLM outputs aren't
 deterministic) — treat the committed report/charts as a snapshot, not a promise.

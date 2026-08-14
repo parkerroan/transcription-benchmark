@@ -142,6 +142,67 @@ def _fixture_count_caption(report: dict[str, Any]) -> str:
     )
 
 
+# Bar charts (unlike the cost-vs-WER scatter, which stays a 2-way synthetic/real-world split)
+# show each real-world clip as its own bar rather than averaging them together -- with clips
+# spanning three different eras/recording qualities, blending them into one "real-world" bar
+# hides exactly the per-clip variation these charts exist to surface.
+_REAL_WORLD_LABELS = {
+    "real-world-fountain-hughes-interview.mp3": "Fountain Hughes (1949)",
+    "real-world-jfk-eisenhower-cuba-call.mp3": "JFK-Eisenhower (1962)",
+    "real-world-nasa-podcast-science-in-space.mp3": "NASA Podcast (2026)",
+}
+_BAR_CATEGORY_COLORS = ["#009E60", "#B33F3F", "#3B6FA0", "#D4A017", "#7A5EA8", "#4A4A4A"]
+
+
+def _category_stats(fixtures: list[dict[str, Any]], predicate) -> dict[str, float | int | None]:
+    """Same aggregation as _scoped_stats, but keyed by an arbitrary predicate over a fixture
+    dict rather than a fixed synthetic/real_world category string -- lets bar charts group by
+    individual real-world clip instead of lumping them into one average.
+    """
+    scoped = [f for f in fixtures if predicate(f)]
+
+    def _mean(key: str) -> float | None:
+        values = [f[key] for f in scoped if f.get(key) is not None]
+        return sum(values) / len(values) if values else None
+
+    return {
+        "fixture_count": len(scoped),
+        "mean_wer": _mean("wer"),
+        "mean_cost_usd_per_minute": _mean("cost_usd_per_minute"),
+        "mean_latency_seconds": _mean("latency_seconds"),
+        "mean_diarization_accuracy": _mean("diarization_accuracy"),
+    }
+
+
+def _bar_categories(report: dict[str, Any]) -> list[tuple[str, Any]]:
+    """(label, predicate) pairs: one "Synthetic" bucket (averaged across all synthetic
+    fixtures), then one bucket per distinct real-world fixture (each necessarily n=1),
+    in the order those fixtures first appear in the report.
+    """
+    categories: list[tuple[str, Any]] = [
+        ("Synthetic (avg)", lambda f: _category_for_fixture_type(f.get("fixture_type", "")) == "synthetic")
+    ]
+    seen: list[str] = []
+    any_fixtures = next(iter(report["providers"].values()))["fixtures"]
+    for f in any_fixtures:
+        name = f.get("fixture")
+        if _category_for_fixture_type(f.get("fixture_type", "")) == "real_world" and name and name not in seen:
+            seen.append(name)
+    for name in seen:
+        label = _REAL_WORLD_LABELS.get(name, name)
+        categories.append((label, (lambda n: lambda f: f.get("fixture") == n)(name)))
+    return categories
+
+
+def _bar_chart_caption(report: dict[str, Any]) -> str:
+    any_fixtures = next(iter(report["providers"].values()))["fixtures"]
+    synthetic_n = int(_scoped_stats(any_fixtures, "synthetic")["fixture_count"] or 0)
+    return (
+        f"Synthetic bar: mean over n={synthetic_n} fixtures (exact-by-construction ground "
+        "truth). Each real-world bar is a single clip (n=1) -- a data point, not an average."
+    )
+
+
 def plot_cost_vs_wer(report: dict[str, Any], out_dir: Path) -> Path | None:
     fig, ax = plt.subplots(figsize=(9, 7))
     any_points = False
@@ -206,26 +267,30 @@ def plot_cost_vs_wer(report: dict[str, Any], out_dir: Path) -> Path | None:
 def _grouped_bar_chart(
     report: dict[str, Any], out_dir: Path, *, metric_key: str, filename: str, ylabel: str, title: str, ylim: tuple[float, float] | None
 ) -> Path | None:
+    categories = _bar_categories(report)
     labels: list[str] = []
-    synthetic_vals: list[float] = []
-    real_world_vals: list[float] = []
+    series: dict[str, list[float]] = {cat_label: [] for cat_label, _ in categories}
+
     for provider_id, data in report["providers"].items():
-        synth = _scoped_stats(data["fixtures"], "synthetic")[metric_key]
-        real = _scoped_stats(data["fixtures"], "real_world")[metric_key]
-        if synth is None and real is None:
+        row = {cat_label: _category_stats(data["fixtures"], predicate)[metric_key] for cat_label, predicate in categories}
+        if all(v is None for v in row.values()):
             continue
         labels.append(data.get("model_id", provider_id))
-        synthetic_vals.append(synth if synth is not None else 0.0)
-        real_world_vals.append(real if real is not None else 0.0)
+        for cat_label, _ in categories:
+            value = row[cat_label]
+            series[cat_label].append(float(value) if value is not None else 0.0)
 
     if not labels:
         return None
 
-    fig, ax = plt.subplots(figsize=(10, 5.5))
+    fig, ax = plt.subplots(figsize=(max(10, 1.6 * len(labels)), 5.5))
     x = list(range(len(labels)))
-    width = 0.35
-    ax.bar([i - width / 2 for i in x], synthetic_vals, width=width, label=_CATEGORY_LABELS["synthetic"], color=_CATEGORY_BAR_COLORS["synthetic"])
-    ax.bar([i + width / 2 for i in x], real_world_vals, width=width, label=_CATEGORY_LABELS["real_world"], color=_CATEGORY_BAR_COLORS["real_world"])
+    n = len(categories)
+    width = 0.8 / n
+    for i, (cat_label, _) in enumerate(categories):
+        offsets = [xi + (i - (n - 1) / 2) * width for xi in x]
+        color = _BAR_CATEGORY_COLORS[i % len(_BAR_CATEGORY_COLORS)]
+        ax.bar(offsets, series[cat_label], width=width, label=cat_label, color=color)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=30, ha="right")
     if ylim is not None:
@@ -233,7 +298,7 @@ def _grouped_bar_chart(
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.legend(fontsize=9)
-    fig.text(0.01, 0.01, _fixture_count_caption(report), fontsize=7.5, color="#6B6352")
+    fig.text(0.01, 0.01, _bar_chart_caption(report), fontsize=7.5, color="#6B6352")
     fig.tight_layout(rect=(0, 0.06, 1, 1))
 
     out_path = out_dir / filename
@@ -246,7 +311,7 @@ def plot_wer_synthetic_vs_real(report: dict[str, Any], out_dir: Path) -> Path | 
     return _grouped_bar_chart(
         report, out_dir,
         metric_key="mean_wer", filename="wer_by_fixture_type.png",
-        ylabel="Word error rate", title="WER: synthetic vs. real-world audio", ylim=None,
+        ylabel="Word error rate", title="WER by fixture: synthetic (avg) vs. each real-world clip", ylim=None,
     )
 
 
@@ -254,7 +319,7 @@ def plot_latency_bar(report: dict[str, Any], out_dir: Path) -> Path | None:
     return _grouped_bar_chart(
         report, out_dir,
         metric_key="mean_latency_seconds", filename="latency_by_provider.png",
-        ylabel="Mean latency (seconds)", title="Latency: synthetic vs. real-world audio", ylim=None,
+        ylabel="Mean latency (seconds)", title="Latency by fixture: synthetic (avg) vs. each real-world clip", ylim=None,
     )
 
 
@@ -262,7 +327,8 @@ def plot_diarization_accuracy(report: dict[str, Any], out_dir: Path) -> Path | N
     return _grouped_bar_chart(
         report, out_dir,
         metric_key="mean_diarization_accuracy", filename="diarization_accuracy.png",
-        ylabel="Speaker-label accuracy (best permutation)", title="Diarization accuracy: synthetic vs. real-world audio",
+        ylabel="Speaker-label accuracy (best permutation)",
+        title="Diarization accuracy by fixture: synthetic (avg) vs. each real-world clip",
         ylim=(0, 1.0),
     )
 
