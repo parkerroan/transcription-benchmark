@@ -93,7 +93,7 @@ def plot_controls_table(out_dir: Path) -> Path:
 # real_world fixture (period audio, officially-transcribed ground truth, not studio-clean).
 _SYNTHETIC_FIXTURE_TYPES = frozenset({"single_speaker", "noisy", "multi_speaker"})
 _REAL_WORLD_FIXTURE_TYPES = frozenset({"real_world"})
-_CATEGORY_LABELS = {"synthetic": "Synthetic (TTS-generated)", "real_world": "Real-world (historical interview)"}
+_CATEGORY_LABELS = {"synthetic": "Synthetic (TTS-generated)", "real_world": "Real-world (historical audio)"}
 _CATEGORY_MARKERS = {"synthetic": "o", "real_world": "^"}
 _CATEGORY_BAR_COLORS = {"synthetic": "#009E60", "real_world": "#6B6352"}
 
@@ -127,12 +127,18 @@ def _scoped_stats(fixtures: list[dict[str, Any]], category: str) -> dict[str, fl
 
 def _fixture_count_caption(report: dict[str, Any]) -> str:
     any_fixtures = next(iter(report["providers"].values()))["fixtures"]
-    synthetic_n = _scoped_stats(any_fixtures, "synthetic")["fixture_count"]
-    real_world_n = _scoped_stats(any_fixtures, "real_world")["fixture_count"]
+    synthetic_n = int(_scoped_stats(any_fixtures, "synthetic")["fixture_count"] or 0)
+    real_world_n = int(_scoped_stats(any_fixtures, "real_world")["fixture_count"] or 0)
+    real_world_noun = "fixture" if real_world_n == 1 else "fixtures"
+    caveat = (
+        "a single real-world clip is a data point, not a statistically robust average"
+        if real_world_n <= 1
+        else f"still a small sample ({real_world_n} clips), not a statistically robust average"
+    )
     return (
         f"Synthetic: n={synthetic_n} fixtures (exact-by-construction ground truth). "
-        f"Real-world: n={real_world_n} fixture (officially-transcribed historical audio) -- "
-        "a single real-world clip is a data point, not a statistically robust average."
+        f"Real-world: n={real_world_n} {real_world_noun} (officially-transcribed historical "
+        f"audio) -- {caveat}."
     )
 
 
