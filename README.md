@@ -30,60 +30,45 @@ Two categories, on purpose:
    Ground truth is exact by construction: clean narration, a numbers/proper-nouns stress test,
    technical jargon, a synthetic-white-noise-overlaid clip, and 2- and 3-speaker scripted
    dialogues.
-2. **Real-world** — three officially-transcribed clips, chosen to separate "real-world audio is
-   hard" from "old/degraded recordings are hard" by covering different eras, recording
-   technology, and speaker counts — two historical and public-domain, one modern and
-   professionally recorded:
+2. **Real-world** — two officially-transcribed clips, chosen to separate "real-world audio is
+   hard" from "old/degraded recordings are hard" by covering different eras and recording
+   technology — one historical and public-domain, one modern and professionally recorded:
    - A ~2-minute excerpt from the Library of Congress American Folklife Center's June 11, 1949
      interview with Fountain Hughes, a formerly enslaved person, conducted by Hermond Norwood
      ([loc.gov/item/afc1950037_000160](http://www.loc.gov/item/afc1950037_000160)).
-   - A ~4.5-minute excerpt (Item 41.2) from a White House Dictabelt recording of President
-     Kennedy briefing former President Eisenhower on October 28, 1962, the morning Khrushchev
-     agreed to withdraw missiles from Cuba
-     ([jfklibrary.org/asset-viewer/archives/jfkpof-tph-41](https://www.jfklibrary.org/asset-viewer/archives/jfkpof-tph-41)).
-     **Rights note:** the JFK Library states that statements by U.S. government officials in
-     the course of their duties are public domain, but Eisenhower was a private citizen in
-     October 1962 and the library lists this belt's copyright status as unknown — his half of
-     the call isn't cleanly public domain the way Kennedy's is. Included anyway as a data point
-     because it's the best-known public two-voice historical audio with a matched official
-     transcript; reconsider before any commercial use beyond this research/benchmarking context.
    - A ~4.9-minute excerpt from NASA's "Houston We Have a Podcast," episode 414 ("Science in
      Space," aired March 2026), a modern two-speaker studio interview with an official
      transcript published by NASA
      ([nasa.gov/podcasts/houston-we-have-a-podcast/science-in-space](https://www.nasa.gov/podcasts/houston-we-have-a-podcast/science-in-space)).
 
-   All three are included because every model's WER roughly **triples to septuples** (3x-7x)
-   relative to the synthetic fixtures — even the *modern, clean* NASA podcast, not just the
-   two degraded historical recordings, confirming this isn't purely an "old audio" effect.
-   `gpt-4o-transcribe-diarize` in particular is the worst or near-worst performer on all three
-   real-world clips despite being competitive on synthetic multi-speaker audio.
+   (A third real-world clip -- a 1962 White House Dictabelt recording -- was tried and dropped:
+   the recording quality was poor enough that one speaker was barely audible even to a human
+   listener, making it a poor source of ground truth regardless of any model's performance on
+   it. Not every real-world source is usable just because a transcript exists for it.)
+
+   Both are included because every model's WER roughly **doubles to quadruples** relative to
+   the synthetic fixtures — even the *modern, clean* NASA podcast, not just the degraded 1949
+   interview, confirming this isn't purely an "old audio" effect. `gpt-4o-transcribe-diarize`
+   in particular is a notably worse performer on both real-world clips despite being competitive
+   on synthetic multi-speaker audio.
 
 ## Results (2026-08-13 run)
 
 See `docs/benchmarks/multimodal-transcription-2026-08-13/` for the full JSON report and PNG
-charts. The cost-vs-WER scatter groups all real-world clips into one category (vs. synthetic);
+charts. The cost-vs-WER scatter groups both real-world clips into one category (vs. synthetic);
 the three bar charts (latency, WER, diarization accuracy) instead show **each real-world clip
-as its own bar** rather than averaging them together — with clips spanning three different
-eras and recording qualities, one blended "real-world" bar hides exactly the per-clip variation
-these charts exist to surface (e.g. the JFK-Eisenhower 1962 Dictabelt is consistently far
-harder than the 2026 NASA podcast, on every metric).
+as its own bar** rather than averaging them together — with the two clips spanning very
+different eras and recording quality, a blended "real-world" bar would hide exactly the
+per-clip variation these charts exist to surface.
 
 Headline findings:
 - `gpt-audio` (multimodal) is competitive with `gpt-4o-transcribe`'s (dedicated) WER on
   synthetic audio while costing roughly 6x more per minute — multimodal buys flexibility here,
   not accuracy.
-- Every model's WER roughly triples-to-septuples (3x-7x) going from synthetic to real-world
-  audio, and this holds even for the modern, cleanly-recorded NASA podcast clip, not just the
-  two degraded historical recordings. The ranking shuffles too: `gpt-4o-transcribe-diarize`,
-  strong on synthetic multi-speaker audio, is consistently among the worst performers on real
-  audio.
-- **Reliability caveat**: on the JFK-Eisenhower clip specifically (the longest and most
-  degraded real-world fixture), both `gpt-4o-transcribe` and `gpt-4o-mini-transcribe` showed
-  large run-to-run swings on repeat calls with identical input (one `gpt-4o-mini-transcribe`
-  call scored WER > 1.0, indicating a badly corrupted/truncated response, while a same-input
-  retry produced a normal, mostly-accurate transcript). This wasn't observed on any synthetic
-  fixture. Treat single-run numbers on this specific clip as a noisier signal than the rest of
-  the report, not as each model's stable characteristic.
+- Every model's WER roughly doubles-to-quadruples going from synthetic to real-world audio, and
+  this holds even for the modern, cleanly-recorded NASA podcast clip, not just the degraded 1949
+  interview. The ranking shuffles too: `gpt-4o-transcribe-diarize`, strong on synthetic
+  multi-speaker audio, is consistently among the worst performers on real audio.
 
 Re-running will produce different numbers (models update, pricing changes, LLM outputs aren't
 deterministic) — treat the committed report/charts as a snapshot, not a promise.

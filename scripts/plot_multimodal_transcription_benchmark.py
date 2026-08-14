@@ -148,7 +148,6 @@ def _fixture_count_caption(report: dict[str, Any]) -> str:
 # hides exactly the per-clip variation these charts exist to surface.
 _REAL_WORLD_LABELS = {
     "real-world-fountain-hughes-interview.mp3": "Fountain Hughes (1949)",
-    "real-world-jfk-eisenhower-cuba-call.mp3": "JFK-Eisenhower (1962)",
     "real-world-nasa-podcast-science-in-space.mp3": "NASA Podcast (2026)",
 }
 _BAR_CATEGORY_COLORS = ["#009E60", "#B33F3F", "#3B6FA0", "#D4A017", "#7A5EA8", "#4A4A4A"]
