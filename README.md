@@ -46,32 +46,42 @@ Two categories, on purpose:
    listener, making it a poor source of ground truth regardless of any model's performance on
    it. Not every real-world source is usable just because a transcript exists for it.)
 
-   Both are included because every model's WER roughly **doubles to quadruples** relative to
-   the synthetic fixtures — even the *modern, clean* NASA podcast, not just the degraded 1949
-   interview, confirming this isn't purely an "old audio" effect. `gpt-4o-transcribe-diarize`
-   in particular is a notably worse performer on both real-world clips despite being competitive
-   on synthetic multi-speaker audio.
+   Both are included because every model's WER rises well above the synthetic fixtures —
+   roughly 1.6x to 4x depending on the model, averaged over 10 runs — even on the *modern,
+   clean* NASA podcast, not just the degraded 1949 interview, confirming this isn't purely an
+   "old audio" effect.
 
-## Results (2026-08-13 run)
+## Results (2026-08-13, averaged over 10 runs)
 
-See `docs/benchmarks/multimodal-transcription-2026-08-13/` for the full JSON report and PNG
-charts. The cost-vs-WER scatter groups both real-world clips into one category (vs. synthetic);
-the three bar charts (latency, WER, diarization accuracy) instead show **each real-world clip
-as its own bar** rather than averaging them together — with the two clips spanning very
-different eras and recording quality, a blended "real-world" bar would hide exactly the
-per-clip variation these charts exist to surface.
+See `docs/benchmarks/multimodal-transcription-2026-08-13/` for the full aggregated JSON report
+and PNG charts. Every metric there is a mean across 10 independent full passes through every
+fixture and model (80 calls per model total), computed by `scripts/aggregate_benchmark_runs.py`,
+to smooth out per-call noise in LLM outputs and API latency — see "Running it" below for how to
+reproduce this. The cost-vs-WER scatter groups both real-world clips into one category (vs.
+synthetic); the three bar charts (latency, WER, diarization accuracy) instead show **each
+real-world clip as its own bar** rather than averaging them together — with the two clips
+spanning very different eras and recording quality, a blended "real-world" bar would hide
+exactly the per-clip variation these charts exist to surface.
 
 Headline findings:
-- `gpt-audio` (multimodal) is competitive with `gpt-4o-transcribe`'s (dedicated) WER on
-  synthetic audio while costing roughly 6x more per minute — multimodal buys flexibility here,
-  not accuracy.
-- Every model's WER roughly doubles-to-quadruples going from synthetic to real-world audio, and
-  this holds even for the modern, cleanly-recorded NASA podcast clip, not just the degraded 1949
-  interview. The ranking shuffles too: `gpt-4o-transcribe-diarize`, strong on synthetic
-  multi-speaker audio, is consistently among the worst performers on real audio.
+- `gpt-audio` (multimodal) actually posts the **lowest** synthetic-audio WER of any model
+  (0.051, vs. 0.072 for `gpt-4o-transcribe` and 0.085 for `whisper-1`) while costing roughly 6x
+  more per minute than `gpt-4o-transcribe` — multimodal isn't just "competitive" here, it's the
+  most accurate option, but that edge comes at a real cost premium.
+- Every model's WER rises going from synthetic to real-world audio, but the size of that jump
+  varies more than a single run suggested: from ~1.6x for `gpt-4o-transcribe-diarize` up to
+  ~4x for `gpt-audio` and `gpt-4o-transcribe`. This holds even for the modern, cleanly-recorded
+  NASA podcast clip, not just the degraded 1949 interview.
+- Diarization accuracy on real-world audio doesn't cleanly separate "dedicated" from
+  "multimodal" once averaged over 10 runs: `azure-fast-transcription` is the most consistent
+  native diarizer (0.92 on both real-world clips), while `grok-stt` swings the widest (0.74 on
+  the 1949 interview vs. 0.92 on the NASA podcast) despite a strong overall average. A single
+  run had suggested `gpt-4o-transcribe-diarize` was consistently among the worst on real audio —
+  that didn't hold up under 10-run averaging, where it lands mid-pack and fairly consistent
+  (~0.85 on both clips).
 
-Re-running will produce different numbers (models update, pricing changes, LLM outputs aren't
-deterministic) — treat the committed report/charts as a snapshot, not a promise.
+Re-running will still produce somewhat different numbers (models update, pricing changes, LLM
+outputs aren't deterministic) — treat the committed report/charts as a snapshot, not a promise.
 
 ## Running it
 
@@ -86,6 +96,21 @@ make plot                 # writes PNGs to /tmp/multimodal-transcription-charts
 
 Requires `ffmpeg` on PATH (via `pydub`). Each provider is skipped automatically if its
 credential isn't set in `.env` — see `.env.example` for the full list.
+
+To reproduce the committed 10-run-averaged report/charts (real $ cost, ~10x a single
+`make benchmark` run):
+
+```bash
+for i in $(seq 1 10); do
+  uv run python scripts/benchmark_multimodal_transcription.py \
+    --manifest tests/integration/fixtures/multimodal_eval/manifest.jsonl \
+    --output /tmp/mt-run-$i.json
+done
+uv run python scripts/aggregate_benchmark_runs.py \
+  --reports /tmp/mt-run-{1..10}.json --output /tmp/mt-aggregated.json
+uv run python scripts/plot_multimodal_transcription_benchmark.py \
+  --report /tmp/mt-aggregated.json --out-dir /tmp/mt-charts
+```
 
 ## Development
 
@@ -103,6 +128,7 @@ scripts/
   transcription_alignment.py            # text-order word alignment + diarization scorer
   generate_transcription_fixtures.py    # synthesizes the TTS-generated fixtures
   benchmark_multimodal_transcription.py # runs the eval, writes a JSON report
+  aggregate_benchmark_runs.py           # averages multiple JSON reports into one (same schema)
   plot_multimodal_transcription_benchmark.py  # renders charts from a report
 tests/
   test_*.py                             # offline unit tests (no network/API keys)
