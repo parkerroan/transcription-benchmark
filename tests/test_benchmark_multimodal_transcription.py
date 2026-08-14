@@ -217,5 +217,6 @@ def test_run_benchmark_reports_static_provider_capabilities(fixtures_dir):
     report = bmt.run_benchmark(entries, providers)
 
     assert report["providers"]["raising"]["model_id"] == "fake-raising"
+    assert report["providers"]["raising"]["vendor"] == "fake"
     assert report["providers"]["raising"]["supports_word_timestamps"] is False
     assert report["providers"]["raising"]["can_attempt_diarization"] is False

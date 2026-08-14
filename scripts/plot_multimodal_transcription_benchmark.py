@@ -152,7 +152,7 @@ def plot_cost_vs_wer(report: dict[str, Any], out_dir: Path) -> Path | None:
     label_offsets = [(8, 6), (8, -14), (10, 16), (10, -24), (-70, 6), (-70, -14)]
 
     for idx, (provider_id, data) in enumerate(report["providers"].items()):
-        color = _color_for(data.get("provider_id", ""))
+        color = _color_for(data.get("vendor", ""))
         model_label = data.get("model_id", provider_id)
         points: dict[str, tuple[float, float]] = {}
         for category in ("synthetic", "real_world"):

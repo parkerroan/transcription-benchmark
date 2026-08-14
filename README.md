@@ -30,8 +30,10 @@ Two categories, on purpose:
    Ground truth is exact by construction: clean narration, a numbers/proper-nouns stress test,
    technical jargon, a synthetic-white-noise-overlaid clip, and 2- and 3-speaker scripted
    dialogues.
-2. **Real-world** — two officially-transcribed public-domain historical clips, chosen to cover
-   different eras, recording technology, and speaker counts:
+2. **Real-world** — three officially-transcribed clips, chosen to separate "real-world audio is
+   hard" from "old/degraded recordings are hard" by covering different eras, recording
+   technology, and speaker counts — two historical and public-domain, one modern and
+   professionally recorded:
    - A ~2-minute excerpt from the Library of Congress American Folklife Center's June 11, 1949
      interview with Fountain Hughes, a formerly enslaved person, conducted by Hermond Norwood
      ([loc.gov/item/afc1950037_000160](http://www.loc.gov/item/afc1950037_000160)).
@@ -45,23 +47,30 @@ Two categories, on purpose:
      the call isn't cleanly public domain the way Kennedy's is. Included anyway as a data point
      because it's the best-known public two-voice historical audio with a matched official
      transcript; reconsider before any commercial use beyond this research/benchmarking context.
+   - A ~4.9-minute excerpt from NASA's "Houston We Have a Podcast," episode 414 ("Science in
+     Space," aired March 2026), a modern two-speaker studio interview with an official
+     transcript published by NASA
+     ([nasa.gov/podcasts/houston-we-have-a-podcast/science-in-space](https://www.nasa.gov/podcasts/houston-we-have-a-podcast/science-in-space)).
 
-   Both are included because every model's error rate roughly **doubles to triples** on them
-   relative to the synthetic fixtures — clean TTS audio understates how hard real period audio
-   actually is, and `gpt-4o-transcribe-diarize` in particular goes from competitive on synthetic
-   audio to nearly unusable (WER ~0.98) on the degraded Dictabelt recording.
+   All three are included because every model's WER roughly **triples to septuples** (3x-7x)
+   relative to the synthetic fixtures — even the *modern, clean* NASA podcast, not just the
+   two degraded historical recordings, confirming this isn't purely an "old audio" effect.
+   `gpt-4o-transcribe-diarize` in particular is the worst or near-worst performer on all three
+   real-world clips despite being competitive on synthetic multi-speaker audio.
 
 ## Results (2026-08-13 run)
 
 See `docs/benchmarks/multimodal-transcription-2026-08-13/` for the full JSON report and PNG
 charts (cost vs. WER, latency, WER by synthetic/real-world, diarization accuracy, and a static
 controls-comparison table). Headline findings:
-- `gpt-audio` (multimodal) matches `gpt-4o-transcribe`'s (dedicated) WER almost exactly on
+- `gpt-audio` (multimodal) is competitive with `gpt-4o-transcribe`'s (dedicated) WER on
   synthetic audio while costing roughly 6x more per minute — multimodal buys flexibility here,
   not accuracy.
-- Every model's WER roughly doubles-to-triples going from synthetic to real-world audio, and
-  the ranking shuffles: `gpt-4o-transcribe-diarize`, strong on synthetic multi-speaker audio,
-  is the worst performer by far on the degraded 1962 Dictabelt recording.
+- Every model's WER roughly triples-to-septuples (3x-7x) going from synthetic to real-world
+  audio, and this holds even for the modern, cleanly-recorded NASA podcast clip, not just the
+  two degraded historical recordings. The ranking shuffles too: `gpt-4o-transcribe-diarize`,
+  strong on synthetic multi-speaker audio, is consistently among the worst performers on real
+  audio.
 
 Re-running will produce different numbers (models update, pricing changes, LLM outputs aren't
 deterministic) — treat the committed report/charts as a snapshot, not a promise.

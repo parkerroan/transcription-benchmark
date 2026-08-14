@@ -241,6 +241,7 @@ def run_benchmark(manifest_entries: list[ManifestEntry], providers: dict[str, ep
 
         per_provider_report[provider_id] = {
             "model_id": provider.model_id,
+            "vendor": provider.provider_id,
             "supports_word_timestamps": provider.supports_word_timestamps,
             "can_attempt_diarization": provider.can_attempt_diarization,
             "fixtures": fixture_reports,
