@@ -11,6 +11,8 @@ accuracy.
 Pipeline, model landscape, fixture set, scoring mechanism, results, and category winners, with
 downloadable CSVs.
 
+*Claude Code was used to help generate this cod
+
 ## What's compared
 
 **Dedicated ASR** (built specifically for transcription):
