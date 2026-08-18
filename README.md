@@ -7,6 +7,10 @@ accuracy.
 > This work was completed to provide data for evaluating transcription services for
 > [Recastr](https://recastr.io).
 
+**[Read the visual benchmark writeup →](https://parkerroan.github.io/transcription-benchmark/)**
+Pipeline, model landscape, fixture set, scoring mechanism, results, and category winners, with
+downloadable CSVs.
+
 ## What's compared
 
 **Dedicated ASR** (built specifically for transcription):

@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmark Anatomy — transcription-benchmark</title>
+<meta name="description" content="Five chapters breaking down a benchmark of 8 speech-to-text models across 5 vendors: pipeline, model landscape, fixture set, scoring mechanism, results, and category winners.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8E%99%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #F5F0E8;
+    --surface: #FFFFFF;
+    --surface-2: #EFE8D8;
+    --ink: #1A1A12;
+    --ink-soft: #6B6352;
+    --ink-faint: #9B927E;
+    --rule: #E1D8C4;
+    --accent-synth: #009E60;
+    --accent-synth-soft: #E4F3EC;
+    --accent-real: #B33F3F;
+    --accent-real-soft: #F6E9E7;
+    --v-openai: #0E8F6F;
+    --v-google: #3C6FCF;
+    --v-xai: #2B2B24;
+    --v-azure: #0069B8;
+    --chip-bg: #FBF8F1;
+    --shadow: 0 1px 0 rgba(26,26,18,0.06);
+    --font-display: "Iowan Old Style", "Sitka Text", "Source Serif Pro", Georgia, serif;
+    --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17160F;
+      --surface: #1F1E15;
+      --surface-2: #262418;
+      --ink: #F3EEE1;
+      --ink-soft: #B9AF98;
+      --ink-faint: #7C7460;
+      --rule: #38361F;
+      --accent-synth: #3BC98D;
+      --accent-synth-soft: #1C3A2C;
+      --accent-real: #E08787;
+      --accent-real-soft: #3B2523;
+      --v-openai: #3BC98D;
+      --v-google: #7FA6F5;
+      --v-xai: #E7E2D3;
+      --v-azure: #6BB3F0;
+      --chip-bg: #221F14;
+      --shadow: 0 1px 0 rgba(0,0,0,0.3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #17160F;
+    --surface: #1F1E15;
+    --surface-2: #262418;
+    --ink: #F3EEE1;
+    --ink-soft: #B9AF98;
+    --ink-faint: #7C7460;
+    --rule: #38361F;
+    --accent-synth: #3BC98D;
+    --accent-synth-soft: #1C3A2C;
+    --accent-real: #E08787;
+    --accent-real-soft: #3B2523;
+    --v-openai: #3BC98D;
+    --v-google: #7FA6F5;
+    --v-xai: #E7E2D3;
+    --v-azure: #6BB3F0;
+    --chip-bg: #221F14;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--accent-synth); color: var(--surface); }
+
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-synth); outline-offset: 2px; }
+
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 5rem 1.75rem 7rem;
+  }
+
+  header.masthead {
+    margin-bottom: 4.5rem;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 1rem;
+  }
+
+  .kicker .dot { color: var(--accent-synth); }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+
+  .lede {
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0 0 2rem;
+  }
+
+  .lede code, p code, figcaption code, li code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    padding: 0.1em 0.38em;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.6rem;
+  }
+
+  .meta-pill {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 0.36rem 0.85rem;
+    box-shadow: var(--shadow);
+  }
+
+  .meta-pill b { color: var(--ink); font-weight: 600; }
+
+  section.chapter {
+    padding-top: 3.4rem;
+    margin-top: 3.4rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  section.chapter:first-of-type { border-top: none; }
+
+  .chapter-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.1rem;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.7rem;
+    letter-spacing: -0.005em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .chapter-num {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  p.dek {
+    max-width: 66ch;
+    color: var(--ink-soft);
+    margin: 0 0 2rem;
+  }
+
+  figure {
+    margin: 0 0 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 1.6rem 1.4rem 1.2rem;
+    box-shadow: var(--shadow);
+  }
+
+  .svg-wrap { width: 100%; overflow-x: auto; }
+
+  figure svg { display: block; width: 100%; height: auto; min-width: 560px; }
+
+  figcaption {
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--rule);
+    max-width: 74ch;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.1rem;
+    margin: 1.1rem 0 2rem;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+  }
+
+  .legend span { display: inline-flex; align-items: center; gap: 0.45rem; }
+
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+
+  .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin: 0 0 2rem;
+  }
+
+  .stat-card {
+    flex: 1 1 150px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    box-shadow: var(--shadow);
+  }
+
+  .stat-card .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.35rem;
+  }
+
+  .stat-card .stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.28rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .stat-card .stat-value small {
+    font-size: 0.62em;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-left: 0.15em;
+  }
+
+  .stat-card.accent-a { border-color: var(--accent-synth); }
+  .stat-card.accent-a .stat-value { color: var(--accent-synth); }
+  .stat-card.accent-b { border-color: var(--accent-real); }
+  .stat-card.accent-b .stat-value { color: var(--accent-real); }
+
+  .table-head-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    margin: 0 0 0.8rem;
+  }
+
+  h3.table-title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .dl-btn {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink-soft);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .dl-btn:hover:not(:disabled) { border-color: var(--accent-synth); color: var(--ink); }
+  .dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .dl-btn svg { flex: none; }
+
+  .dl-status {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+  }
+
+  .winner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0.9rem;
+    margin: 0 0 1.6rem;
+  }
+
+  .winner-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem 1.2rem;
+    box-shadow: var(--shadow);
+    border-left: 3px solid var(--accent-synth);
+  }
+
+  .winner-card .category {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.55rem;
+  }
+
+  .winner-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+  }
+
+  .winner-name .vendor-dot { width: 9px; height: 9px; }
+
+  .winner-name .name {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 1.02rem;
+    color: var(--ink);
+  }
+
+  .winner-name .tie-with {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
+  .winner-card .why {
+    font-size: 0.87rem;
+    color: var(--ink-soft);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .winner-card .why code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    padding: 0.1em 0.36em;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  .callout {
+    background: var(--accent-real-soft);
+    border: 1px solid var(--accent-real);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: 0.9rem;
+    color: var(--ink);
+    line-height: 1.55;
+  }
+
+  .callout b { color: var(--accent-real); }
+
+  figure.table-figure {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0 0 2.4rem;
+  }
+
+  figure.table-figure figcaption { margin-top: 0.9rem; padding-top: 0.9rem; }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+
+  table.results {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    min-width: 780px;
+  }
+
+  table.results caption { display: none; }
+
+  table.results th {
+    text-align: left;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 0.85rem 0.9rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  table.results th.num, table.results td.num { text-align: right; }
+
+  table.results td {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  table.results tbody tr:nth-child(even) { background: var(--surface-2); }
+  table.results tbody tr:last-child td { border-bottom: none; }
+
+  .model-cell { display: flex; align-items: center; gap: 0.55rem; }
+  .vendor-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .model-cell .model-name { color: var(--ink); font-weight: 600; }
+
+  .wer-bar-wrap { display: flex; align-items: center; gap: 0.55rem; justify-content: flex-end; }
+  .wer-bar-track { width: 56px; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; flex: none; }
+  .wer-bar-fill { height: 100%; border-radius: 3px; }
+
+  .ts-yes { color: var(--accent-synth); }
+  .ts-no { color: var(--ink-faint); }
+
+  footer.colophon {
+    margin-top: 5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 560px) {
+    .page { padding: 3rem 1.1rem 5rem; }
+    figure { padding: 1.2rem 1rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="kicker"><span class="dot">●</span> recastr.io &nbsp;/&nbsp; benchmark field notes</p>
+    <h1>Anatomy of a transcription benchmark</h1>
+    <p class="lede">
+      How eight speech-to-text models — five vendors, two philosophies — get run through the
+      same eight fixtures, scored on the same four axes, and averaged over ten full passes
+      before a single chart gets drawn.
+    </p>
+    <div class="meta-row">
+      <span class="meta-pill"><b class="tnum">8</b> models</span>
+      <span class="meta-pill"><b class="tnum">5</b> vendors</span>
+      <span class="meta-pill"><b class="tnum">8</b> fixtures</span>
+      <span class="meta-pill"><b class="tnum">10×</b> repeated runs</span>
+      <span class="meta-pill"><b class="tnum">4</b> scoring axes</span>
+    </div>
+  </header>
+
+  <!-- ============================================================ -->
+  <!-- CHAPTER 1 — PIPELINE -->
+  <!-- ============================================================ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <h2>One fixture's trip through the pipeline</h2>
+      <span class="chapter-num tnum">01 / 04</span>
+    </div>
+    <p class="dek">
+      Every audio file in the manifest is sent to all eight providers, scored the same way,
+      and the whole pass repeats ten times before anything is averaged into a chart.
+    </p>
+
+    <figure>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 920 620" role="img" aria-label="Pipeline diagram: a manifest entry is sent to eight providers in parallel, each response is scored on WER, keyterm recall, timestamp drift, and diarization accuracy, written to a per-run report, the whole pass repeats ten times, and the ten reports are averaged and plotted.">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+
+          <!-- stage 1: manifest entry -->
+          <rect x="20" y="20" width="230" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="34" y="42" font-family="ui-monospace,monospace" font-size="11" fill="currentColor">manifest.jsonl · fixture</text>
+          <text x="34" y="60" font-family="ui-monospace,monospace" font-size="11" fill="currentColor" opacity="0.7">two-speaker-dialogue.mp3</text>
+          <text x="34" y="76" font-family="ui-monospace,monospace" font-size="10" fill="currentColor" opacity="0.55">fixture_type: multi_speaker</text>
+
+          <line x1="135" y1="84" x2="135" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+          <text x="150" y="102" font-family="ui-monospace,monospace" font-size="10" fill="currentColor" opacity="0.7">fan out · diarize=True</text>
+
+          <!-- stage 2: 8 providers -->
+          <g font-family="ui-monospace,monospace" font-size="10">
+            <rect x="20" y="112" width="126" height="26" rx="4" fill="none" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <text x="30" y="129" fill="var(--v-openai)">whisper-1</text>
+
+            <rect x="156" y="112" width="126" height="26" rx="4" fill="none" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <text x="166" y="129" fill="var(--v-openai)">gpt-4o-transcribe</text>
+
+            <rect x="292" y="112" width="150" height="26" rx="4" fill="none" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <text x="302" y="129" fill="var(--v-openai)">gpt-4o-mini-transcribe</text>
+
+            <rect x="452" y="112" width="160" height="26" rx="4" fill="none" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <text x="462" y="129" fill="var(--v-openai)">gpt-4o-transcribe-diarize</text>
+
+            <rect x="20" y="146" width="126" height="26" rx="4" fill="none" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <text x="30" y="163" fill="var(--v-openai)">gpt-audio</text>
+
+            <rect x="156" y="146" width="140" height="26" rx="4" fill="none" stroke="var(--v-google)" stroke-width="1.3"/>
+            <text x="166" y="163" fill="var(--v-google)">gemini-3.7-flash</text>
+
+            <rect x="306" y="146" width="106" height="26" rx="4" fill="none" stroke="var(--v-xai)" stroke-width="1.3"/>
+            <text x="316" y="163" fill="var(--v-xai)">grok-stt</text>
+
+            <rect x="422" y="146" width="190" height="26" rx="4" fill="none" stroke="var(--v-azure)" stroke-width="1.3"/>
+            <text x="432" y="163" fill="var(--v-azure)">azure-fast-transcription</text>
+          </g>
+
+          <line x1="330" y1="172" x2="330" y2="204" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+          <text x="345" y="194" font-family="ui-monospace,monospace" font-size="10" fill="currentColor" opacity="0.7">EvalTranscript{text, words, cost, duration}</text>
+
+          <!-- stage 3: scoring -->
+          <rect x="20" y="204" width="720" height="146" rx="8" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <text x="36" y="226" font-family="ui-monospace,monospace" font-size="10.5" fill="currentColor" opacity="0.75" letter-spacing="0.04em">SCORING · scripts/transcription_alignment.py</text>
+
+          <g font-family="ui-monospace,monospace" font-size="10.5">
+            <rect x="36" y="240" width="330" height="42" rx="5" fill="var(--surface)" stroke="var(--rule)"/>
+            <text x="48" y="257" fill="currentColor">jiwer.wer(reference, hypothesis)</text>
+            <text x="48" y="273" fill="currentColor" opacity="0.65">→ word error rate</text>
+
+            <rect x="380" y="240" width="330" height="42" rx="5" fill="var(--surface)" stroke="var(--rule)"/>
+            <text x="392" y="257" fill="currentColor">keyterm_miss_rate(keyterms, text)</text>
+            <text x="392" y="273" fill="currentColor" opacity="0.65">→ fraction of named terms missed</text>
+
+            <rect x="36" y="292" width="330" height="46" rx="5" fill="var(--surface)" stroke="var(--rule)"/>
+            <text x="48" y="309" fill="currentColor">align_words() → |Δ start time|</text>
+            <text x="48" y="325" fill="currentColor" opacity="0.65">→ median / p95 timestamp drift</text>
+
+            <rect x="380" y="292" width="330" height="46" rx="5" fill="var(--surface)" stroke="var(--rule)"/>
+            <text x="392" y="309" fill="currentColor">diarization_accuracy() · best permutation</text>
+            <text x="392" y="325" fill="currentColor" opacity="0.65">→ speaker-label accuracy, or null</text>
+          </g>
+
+          <line x1="380" y1="350" x2="380" y2="378" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+          <!-- stage 4: fixture report -->
+          <rect x="220" y="378" width="320" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3"/>
+          <text x="380" y="402" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="currentColor">fixture_report{} appended · one per provider</text>
+
+          <line x1="380" y1="418" x2="380" y2="446" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+          <!-- stage 5: run report -->
+          <rect x="240" y="446" width="280" height="46" rx="6" fill="var(--ink)" />
+          <text x="380" y="465" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="var(--bg)">run-N.json</text>
+          <text x="380" y="481" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="var(--bg)" opacity="0.75">all 8 fixtures × 8 models, one pass</text>
+
+          <!-- loop back -->
+          <path d="M 240 469 C 130 469, 130 300, 240 155" fill="none" stroke="var(--accent-real)" stroke-width="1.4" stroke-dasharray="1 4" marker-end="url(#arrow)"/>
+          <text x="96" y="320" font-family="ui-monospace,monospace" font-size="10.5" fill="var(--accent-real)" transform="rotate(-90 96 320)" text-anchor="middle">repeat × 10 runs</text>
+
+          <line x1="380" y1="492" x2="380" y2="520" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+          <!-- stage 6: aggregate -->
+          <rect x="190" y="520" width="380" height="50" rx="6" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)" stroke-width="1.3"/>
+          <text x="380" y="541" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="var(--accent-synth)" font-weight="600">aggregate_benchmark_runs.py</text>
+          <text x="380" y="558" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.75">mean per (provider, fixture) · failed calls skipped, not zeroed</text>
+
+          <line x1="380" y1="570" x2="380" y2="598" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow)"/>
+          <text x="395" y="590" font-family="ui-monospace,monospace" font-size="10" fill="currentColor" opacity="0.7">plot_multimodal_transcription_benchmark.py</text>
+
+          <rect x="300" y="598" width="160" height="1" fill="none"/>
+        </svg>
+      </div>
+      <figcaption>
+        One fixture, fanned out to all eight providers, scored on four axes, then folded into a
+        per-run report. The whole left-hand loop — every fixture against every model — runs ten
+        times before <code>aggregate_benchmark_runs.py</code> averages matching
+        (provider, fixture) pairs across runs and hands the result to the plotting script.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CHAPTER 2 — MODEL LANDSCAPE -->
+  <!-- ============================================================ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <h2>Two philosophies, eight models</h2>
+      <span class="chapter-num tnum">02 / 04</span>
+    </div>
+    <p class="dek">
+      Dedicated ASR models are purpose-built for transcription. General multimodal chat models
+      are asked to transcribe via a prompt. The split matters most in what each side can
+      actually output — not every model returns a word timestamp to hang a subtitle cue on.
+    </p>
+
+    <figure>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 920 470" role="img" aria-label="Comparison of dedicated ASR models against general multimodal chat models, showing which of the eight models return word-level timestamps and which support native diarization.">
+          <!-- column headers -->
+          <text x="230" y="30" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="600" fill="currentColor">Dedicated ASR</text>
+          <text x="230" y="48" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.6">built to transcribe</text>
+
+          <text x="690" y="30" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="600" fill="currentColor">Multimodal chat models</text>
+          <text x="690" y="48" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.6">prompted: "transcribe this"</text>
+
+          <line x1="460" y1="15" x2="460" y2="440" stroke="currentColor" stroke-width="1" stroke-dasharray="2 4" opacity="0.35"/>
+
+          <!-- dedicated column chips: model, vendor color, timestamps y/n, diarization -->
+          <g font-family="ui-monospace,monospace" font-size="10.5">
+            <!-- whisper-1 -->
+            <rect x="20" y="66" width="420" height="46" rx="6" fill="var(--chip-bg)" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <circle cx="38" cy="89" r="4" fill="var(--v-openai)"/>
+            <text x="52" y="86" fill="currentColor" font-weight="600">whisper-1</text>
+            <text x="52" y="101" fill="currentColor" opacity="0.6" font-size="9.5">OpenAI</text>
+            <text x="420" y="86" text-anchor="end" fill="var(--accent-synth)">● word timestamps</text>
+            <text x="420" y="101" text-anchor="end" fill="currentColor" opacity="0.5">no diarization</text>
+
+            <!-- gpt-4o-transcribe -->
+            <rect x="20" y="122" width="420" height="40" rx="6" fill="var(--chip-bg)" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <circle cx="38" cy="142" r="4" fill="var(--v-openai)"/>
+            <text x="52" y="139" fill="currentColor" font-weight="600">gpt-4o-transcribe</text>
+            <text x="52" y="153" fill="currentColor" opacity="0.6" font-size="9.5">OpenAI</text>
+            <text x="420" y="139" text-anchor="end" fill="var(--accent-real)">○ no timestamps</text>
+            <text x="420" y="153" text-anchor="end" fill="currentColor" opacity="0.5">no diarization</text>
+
+            <!-- gpt-4o-mini-transcribe -->
+            <rect x="20" y="172" width="420" height="40" rx="6" fill="var(--chip-bg)" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <circle cx="38" cy="192" r="4" fill="var(--v-openai)"/>
+            <text x="52" y="189" fill="currentColor" font-weight="600">gpt-4o-mini-transcribe</text>
+            <text x="52" y="203" fill="currentColor" opacity="0.6" font-size="9.5">OpenAI</text>
+            <text x="420" y="189" text-anchor="end" fill="var(--accent-real)">○ no timestamps</text>
+            <text x="420" y="203" text-anchor="end" fill="currentColor" opacity="0.5">no diarization</text>
+
+            <!-- gpt-4o-transcribe-diarize -->
+            <rect x="20" y="222" width="420" height="46" rx="6" fill="var(--chip-bg)" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <circle cx="38" cy="245" r="4" fill="var(--v-openai)"/>
+            <text x="52" y="242" fill="currentColor" font-weight="600">gpt-4o-transcribe-diarize</text>
+            <text x="52" y="257" fill="currentColor" opacity="0.6" font-size="9.5">OpenAI</text>
+            <text x="420" y="242" text-anchor="end" fill="currentColor" opacity="0.6">◐ segment-level only</text>
+            <text x="420" y="257" text-anchor="end" fill="var(--accent-synth)">native diarization</text>
+
+            <!-- grok-stt -->
+            <rect x="20" y="278" width="420" height="46" rx="6" fill="var(--chip-bg)" stroke="var(--v-xai)" stroke-width="1.3"/>
+            <circle cx="38" cy="301" r="4" fill="var(--v-xai)"/>
+            <text x="52" y="298" fill="currentColor" font-weight="600">grok-stt</text>
+            <text x="52" y="313" fill="currentColor" opacity="0.6" font-size="9.5">xAI</text>
+            <text x="420" y="298" text-anchor="end" fill="var(--accent-synth)">● word timestamps</text>
+            <text x="420" y="313" text-anchor="end" fill="var(--accent-synth)">native diarization</text>
+
+            <!-- azure -->
+            <rect x="20" y="334" width="420" height="46" rx="6" fill="var(--chip-bg)" stroke="var(--v-azure)" stroke-width="1.3"/>
+            <circle cx="38" cy="357" r="4" fill="var(--v-azure)"/>
+            <text x="52" y="354" fill="currentColor" font-weight="600">azure-fast-transcription</text>
+            <text x="52" y="369" fill="currentColor" opacity="0.6" font-size="9.5">Microsoft</text>
+            <text x="420" y="354" text-anchor="end" fill="var(--accent-synth)">● word timestamps</text>
+            <text x="420" y="369" text-anchor="end" fill="var(--accent-synth)">native, up to 35 speakers</text>
+          </g>
+
+          <!-- multimodal column: 2 chips, centered lower -->
+          <g font-family="ui-monospace,monospace" font-size="10.5">
+            <rect x="480" y="122" width="420" height="46" rx="6" fill="var(--chip-bg)" stroke="var(--v-openai)" stroke-width="1.3"/>
+            <circle cx="498" cy="145" r="4" fill="var(--v-openai)"/>
+            <text x="512" y="142" fill="currentColor" font-weight="600">gpt-audio</text>
+            <text x="512" y="157" fill="currentColor" opacity="0.6" font-size="9.5">OpenAI · gpt-audio-2025-08-28</text>
+            <text x="880" y="142" text-anchor="end" fill="var(--accent-real)">○ no timestamps</text>
+            <text x="880" y="157" text-anchor="end" fill="currentColor" opacity="0.6">◐ promptable diarization</text>
+
+            <rect x="480" y="178" width="420" height="46" rx="6" fill="var(--chip-bg)" stroke="var(--v-google)" stroke-width="1.3"/>
+            <circle cx="498" cy="201" r="4" fill="var(--v-google)"/>
+            <text x="512" y="198" fill="currentColor" font-weight="600">gemini-3.7-flash</text>
+            <text x="512" y="213" fill="currentColor" opacity="0.6" font-size="9.5">Google</text>
+            <text x="880" y="198" text-anchor="end" fill="var(--accent-real)">○ no timestamps</text>
+            <text x="880" y="213" text-anchor="end" fill="currentColor" opacity="0.6">◐ promptable diarization</text>
+          </g>
+
+          <text x="690" y="260" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.45">(2 of 8 — the rest of the fleet is dedicated ASR)</text>
+
+          <!-- footer callout -->
+          <rect x="20" y="404" width="880" height="52" rx="7" fill="var(--accent-real-soft)" stroke="var(--accent-real)" stroke-width="1"/>
+          <text x="40" y="425" font-family="ui-monospace,monospace" font-size="10.5" fill="var(--accent-real)" font-weight="600">only 3 of 8 models return word-level timestamps:</text>
+          <text x="40" y="442" font-family="ui-monospace,monospace" font-size="10.5" fill="currentColor" opacity="0.8">whisper-1 · grok-stt · azure-fast-transcription — the rest can't reliably time an SRT cue</text>
+        </svg>
+      </div>
+      <figcaption>
+        Vendor color marks the provider; the right-hand annotation is the capability the WER
+        number alone hides. Word-level timestamps gate whether a model can produce a properly
+        timed subtitle file at all — five of the eight can't, regardless of how low their WER
+        scores.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CHAPTER 3 — FIXTURE SET -->
+  <!-- ============================================================ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <h2>Two kinds of hard, on purpose</h2>
+      <span class="chapter-num tnum">03 / 04</span>
+    </div>
+    <p class="dek">
+      Six fixtures are synthesized with exact-by-construction ground truth. Two are real
+      archival recordings, chosen from different eras specifically to separate
+      "real-world audio is hard" from "old audio is hard."
+    </p>
+
+    <figure>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 920 400" role="img" aria-label="The eight benchmark fixtures split into six TTS-synthesized clips with exact ground truth and two real-world archival recordings from different eras, chosen to isolate whether difficulty comes from real-world audio in general or specifically from old recordings.">
+          <defs>
+            <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <text x="460" y="28" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5" fill="currentColor" opacity="0.6">manifest.jsonl — 8 fixtures</text>
+          <line x1="460" y1="38" x2="460" y2="58" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M 460 58 L 220 58 L 220 78" fill="none" stroke="var(--accent-synth)" stroke-width="1.3" marker-end="url(#arrow3)"/>
+          <path d="M 460 58 L 700 58 L 700 78" fill="none" stroke="var(--accent-real)" stroke-width="1.3" marker-end="url(#arrow3)"/>
+
+          <!-- synthetic branch -->
+          <text x="220" y="98" text-anchor="middle" font-family="Georgia,serif" font-size="14" font-weight="600" fill="var(--accent-synth)">Synthetic</text>
+          <text x="220" y="114" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.6">tts-1 · exact ground truth</text>
+
+          <g font-family="ui-monospace,monospace" font-size="10">
+            <rect x="30" y="130" width="380" height="30" rx="5" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)" stroke-width="1"/>
+            <text x="42" y="150" fill="currentColor">clean-narration · numbers-and-names · technical-jargon</text>
+
+            <rect x="30" y="166" width="380" height="26" rx="5" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)" stroke-width="1"/>
+            <text x="42" y="183" fill="currentColor">noisy-narration <tspan opacity="0.6">— white noise overlay</tspan></text>
+
+            <rect x="30" y="198" width="380" height="26" rx="5" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)" stroke-width="1"/>
+            <text x="42" y="215" fill="currentColor">two- and three-speaker dialogue <tspan opacity="0.6">— scripted</tspan></text>
+          </g>
+          <text x="220" y="248" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.55">single_speaker × 3 · noisy × 1 · multi_speaker × 2</text>
+
+          <!-- real world branch -->
+          <text x="700" y="98" text-anchor="middle" font-family="Georgia,serif" font-size="14" font-weight="600" fill="var(--accent-real)">Real-world</text>
+          <text x="700" y="114" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.6">officially-transcribed archives</text>
+
+          <g font-family="ui-monospace,monospace" font-size="10">
+            <rect x="510" y="130" width="380" height="52" rx="5" fill="var(--accent-real-soft)" stroke="var(--accent-real)" stroke-width="1"/>
+            <text x="522" y="148" fill="currentColor" font-weight="600">Fountain Hughes interview</text>
+            <text x="522" y="163" fill="currentColor" opacity="0.65">Library of Congress AFC · 1949</text>
+            <text x="522" y="177" fill="currentColor" opacity="0.5">317 words · 2 speakers</text>
+
+            <rect x="510" y="190" width="380" height="52" rx="5" fill="var(--accent-real-soft)" stroke="var(--accent-real)" stroke-width="1"/>
+            <text x="522" y="208" fill="currentColor" font-weight="600">NASA "Houston We Have a Podcast"</text>
+            <text x="522" y="223" fill="currentColor" opacity="0.65">episode 414 · 2026, studio-recorded</text>
+            <text x="522" y="237" fill="currentColor" opacity="0.5">876 words · 2 speakers</text>
+          </g>
+
+          <!-- isolation callout -->
+          <line x1="700" y1="182" x2="700" y2="190" stroke="currentColor" stroke-width="0" />
+          <rect x="510" y="256" width="380" height="70" rx="7" fill="none" stroke="var(--rule)" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="700" y="278" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="currentColor" font-weight="600">1949 × 2026 — two eras, two recording qualities</text>
+          <text x="700" y="296" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.7">if only the 1949 clip were hard, it'd be an "old audio"</text>
+          <text x="700" y="311" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.7">problem. Both clips degrade WER 1.6×–4× — it isn't.</text>
+
+          <!-- dropped fixture note -->
+          <text x="460" y="374" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="currentColor" opacity="0.45">a third clip — a 1962 White House Dictabelt recording — was tried and dropped: one speaker was barely audible even to a human listener</text>
+        </svg>
+      </div>
+      <figcaption>
+        Word and speaker counts are the actual <code>reference_words</code> ground truth used
+        to score every model. The two real-world clips are never averaged together in the
+        per-model bar charts — spanning 77 years of recording technology, blending them would
+        hide exactly the variation the comparison exists to surface.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CHAPTER 4 — SCORING MECHANISM -->
+  <!-- ============================================================ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <h2>How a diarized transcript gets graded</h2>
+      <span class="chapter-num tnum">04 / 05</span>
+    </div>
+    <p class="dek">
+      Provider speaker labels are arbitrary — xAI returns integers, prompted models return
+      "Speaker 1" strings — and have no reason to line up with the reference A/B labels. The
+      scorer brute-forces the label mapping that scores best, then reports that number.
+    </p>
+
+    <figure>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 920 420" role="img" aria-label="Diarization scoring mechanism: reference words labeled speaker A and B are greedily text-matched in order against a provider's words labeled with arbitrary integer speaker IDs, then every possible label-to-speaker mapping is tried and the one producing the highest match rate is kept as the score.">
+          <defs>
+            <marker id="arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <text x="20" y="26" font-family="ui-monospace,monospace" font-size="10.5" fill="currentColor" opacity="0.6">reference_words — ground truth</text>
+          <g font-family="ui-monospace,monospace" font-size="11">
+            <rect x="20" y="36" width="70" height="30" rx="4" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)"/>
+            <text x="55" y="56" text-anchor="middle" fill="currentColor">budget</text>
+            <text x="55" y="82" text-anchor="middle" font-size="9" fill="var(--accent-synth)">A</text>
+
+            <rect x="98" y="36" width="90" height="30" rx="4" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)"/>
+            <text x="143" y="56" text-anchor="middle" fill="currentColor">marketing</text>
+            <text x="143" y="82" text-anchor="middle" font-size="9" fill="var(--accent-synth)">A</text>
+
+            <rect x="196" y="36" width="70" height="30" rx="4" fill="var(--accent-real-soft)" stroke="var(--accent-real)"/>
+            <text x="231" y="56" text-anchor="middle" fill="currentColor">ten</text>
+            <text x="231" y="82" text-anchor="middle" font-size="9" fill="var(--accent-real)">B</text>
+
+            <rect x="274" y="36" width="90" height="30" rx="4" fill="var(--accent-real-soft)" stroke="var(--accent-real)"/>
+            <text x="319" y="56" text-anchor="middle" fill="currentColor">percent</text>
+            <text x="319" y="82" text-anchor="middle" font-size="9" fill="var(--accent-real)">B</text>
+          </g>
+
+          <text x="20" y="118" font-family="ui-monospace,monospace" font-size="10.5" fill="currentColor" opacity="0.6">provider words — arbitrary label IDs</text>
+          <g font-family="ui-monospace,monospace" font-size="11">
+            <rect x="20" y="128" width="70" height="30" rx="4" fill="var(--chip-bg)" stroke="currentColor" stroke-width="1"/>
+            <text x="55" y="148" text-anchor="middle" fill="currentColor">budget</text>
+            <text x="55" y="174" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">1</text>
+
+            <rect x="98" y="128" width="90" height="30" rx="4" fill="var(--chip-bg)" stroke="currentColor" stroke-width="1"/>
+            <text x="143" y="148" text-anchor="middle" fill="currentColor">marketing</text>
+            <text x="143" y="174" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">1</text>
+
+            <rect x="196" y="128" width="70" height="30" rx="4" fill="var(--chip-bg)" stroke="currentColor" stroke-width="1"/>
+            <text x="231" y="148" text-anchor="middle" fill="currentColor">ten</text>
+            <text x="231" y="174" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">0</text>
+
+            <rect x="274" y="128" width="90" height="30" rx="4" fill="var(--chip-bg)" stroke="currentColor" stroke-width="1"/>
+            <text x="319" y="148" text-anchor="middle" fill="currentColor">percent</text>
+            <text x="319" y="174" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">0</text>
+          </g>
+
+          <line x1="55" y1="66" x2="55" y2="128" stroke="currentColor" stroke-width="1" opacity="0.3" stroke-dasharray="1 3"/>
+          <line x1="143" y1="66" x2="143" y2="128" stroke="currentColor" stroke-width="1" opacity="0.3" stroke-dasharray="1 3"/>
+          <line x1="231" y1="66" x2="231" y2="128" stroke="currentColor" stroke-width="1" opacity="0.3" stroke-dasharray="1 3"/>
+          <line x1="319" y1="66" x2="319" y2="128" stroke="currentColor" stroke-width="1" opacity="0.3" stroke-dasharray="1 3"/>
+          <text x="440" y="150" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.55">align_words() — greedy in-order</text>
+          <text x="440" y="164" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.55">text match, speaker-blind</text>
+
+          <line x1="200" y1="188" x2="200" y2="216" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow4)"/>
+
+          <!-- permutation search -->
+          <rect x="20" y="216" width="880" height="130" rx="8" fill="var(--surface-2)" stroke="var(--rule)"/>
+          <text x="36" y="238" font-family="ui-monospace,monospace" font-size="10.5" fill="currentColor" opacity="0.75">diarization_accuracy() — try every label mapping, keep the best</text>
+
+          <g font-family="ui-monospace,monospace" font-size="10.5">
+            <rect x="36" y="252" width="400" height="42" rx="5" fill="var(--surface)" stroke="var(--accent-real)" stroke-width="1.2"/>
+            <text x="50" y="270" fill="currentColor">{0→A, 1→B}</text>
+            <text x="50" y="286" fill="var(--accent-real)">2 of 4 words match → 0.50</text>
+
+            <rect x="452" y="252" width="410" height="42" rx="5" fill="var(--accent-synth-soft)" stroke="var(--accent-synth)" stroke-width="1.6"/>
+            <text x="466" y="270" fill="currentColor" font-weight="600">{0→B, 1→A}</text>
+            <text x="466" y="286" fill="var(--accent-synth)" font-weight="600">4 of 4 words match → 1.00 ✓ kept</text>
+          </g>
+
+          <text x="36" y="316" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.6">brute-force over label permutations — fine at 2–3 speakers; would need the</text>
+          <text x="36" y="332" font-family="ui-monospace,monospace" font-size="9.5" fill="currentColor" opacity="0.6">Hungarian algorithm at larger counts. Word-count accuracy, not time-weighted DER.</text>
+
+          <line x1="460" y1="346" x2="460" y2="374" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow4)"/>
+          <rect x="330" y="374" width="260" height="34" rx="6" fill="var(--ink)"/>
+          <text x="460" y="396" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5" fill="var(--bg)">diarization_accuracy: 1.00</text>
+        </svg>
+      </div>
+      <figcaption>
+        The same mechanism scores WER (via <code>jiwer</code>) and timestamp drift alongside
+        diarization — <code>align_words()</code> matches text greedily in reference order, blind
+        to speaker; only the diarization step needs the extra permutation search, since it's the
+        one axis where the provider's labels don't share a vocabulary with the reference's.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CHAPTER 5 — RESULTS -->
+  <!-- ============================================================ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <h2>What ten runs actually show</h2>
+      <span class="chapter-num tnum">05 / 06</span>
+    </div>
+    <p class="dek">
+      Every number below is a mean across the 10 repeated runs described in chapter one — not a
+      single noisy pass. Sorted by synthetic-audio WER, best first.
+    </p>
+
+    <div class="stat-row">
+      <div class="stat-card accent-a">
+        <p class="stat-label">Lowest synthetic WER</p>
+        <p class="stat-value">5.1<small>% · gpt-audio</small></p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Cheapest per minute</p>
+        <p class="stat-value">$0.0017<small>grok-stt</small></p>
+      </div>
+      <div class="stat-card accent-a">
+        <p class="stat-label">Most consistent diarizer</p>
+        <p class="stat-value">Δ0.00<small>azure, 1949 vs. 2026</small></p>
+      </div>
+      <div class="stat-card accent-b">
+        <p class="stat-label">Can produce a timed SRT</p>
+        <p class="stat-value">3<small>of 8 models</small></p>
+      </div>
+    </div>
+
+    <div class="table-head-row">
+      <h3 class="table-title">Word error rate, latency, cost</h3>
+      <span>
+        <button type="button" class="dl-btn" id="dl-wer" disabled>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v6.5M6 7.5L3 4.5M6 7.5l3-3M2 10.5h8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download CSV
+        </button>
+        <span class="dl-status" id="dl-wer-status"></span>
+      </span>
+    </div>
+    <figure class="table-figure">
+    <div class="table-wrap">
+      <table class="results">
+        <caption>Per-model WER, latency, and cost averaged over 10 benchmark runs</caption>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th class="num">Synthetic WER</th>
+            <th class="num">1949 Interview WER</th>
+            <th class="num">2026 Interview WER</th>
+            <th class="num">Latency</th>
+            <th class="num">$ / min</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-audio</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">5.1%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:33%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">29.8%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:84%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">10.7%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:46%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">3.4s</td>
+            <td class="num tnum">$0.0214</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-azure)"></span><span class="model-name">azure-fast-transcription</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">7.1%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:46%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">33.1%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:93%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">13.1%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:56%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">3.3s</td>
+            <td class="num tnum">$0.0060</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-google)"></span><span class="model-name">gemini-3.7-flash</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">7.2%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:47%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">33.9%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:95%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">20.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:87%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">11.6s</td>
+            <td class="num tnum">$0.0021</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-4o-transcribe</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">7.2%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:47%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">33.7%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:95%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">22.0%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:95%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">3.2s</td>
+            <td class="num tnum">$0.0035</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-4o-mini-transcribe</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">7.9%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:51%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">33.0%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:93%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">11.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:48%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">1.9s</td>
+            <td class="num tnum">$0.0018</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">whisper-1</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">8.5%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:55%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">30.9%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:87%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">12.2%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:52%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">4.0s</td>
+            <td class="num tnum">$0.0060</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-xai)"></span><span class="model-name">grok-stt</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">8.9%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:58%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">35.6%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:100%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">23.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:100%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">0.9s</td>
+            <td class="num tnum">$0.0017</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-4o-transcribe-diarize</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">15.4%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:100%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">33.9%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:95%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">15.7%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:67%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum">22.1s</td>
+            <td class="num tnum">$0.0192</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption style="margin-top:0.9rem;">
+      Each WER column's bars scale to that column's own worst model (synthetic max 15.4%, 1949
+      max 35.6%, 2026 max 23.3%) — compare bar length within a column, read the percentage
+      across columns. The 1949 interview is the harder clip for every single model, often by a
+      wide margin over the cleanly-recorded 2026 podcast.
+    </figcaption>
+    </figure>
+
+    <div class="table-head-row">
+      <h3 class="table-title">Diarization accuracy</h3>
+      <span>
+        <button type="button" class="dl-btn" id="dl-diar" disabled>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v6.5M6 7.5L3 4.5M6 7.5l3-3M2 10.5h8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download CSV
+        </button>
+        <span class="dl-status" id="dl-diar-status"></span>
+      </span>
+    </div>
+    <figure class="table-figure">
+    <div class="table-wrap">
+      <table class="results">
+        <caption>Per-model speaker-diarization accuracy averaged over 10 benchmark runs</caption>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th class="num">Synthetic (2–3 speakers)</th>
+            <th class="num">1949 Interview</th>
+            <th class="num">2026 Interview</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-audio</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">100%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:100%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">83.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:44%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">88.5%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:62%;background:var(--accent-synth)"></span></span></span></td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-azure)"></span><span class="model-name">azure-fast-transcription</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">96.1%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:87%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">92.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:74%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">92.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:74%;background:var(--accent-synth)"></span></span></span></td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-google)"></span><span class="model-name">gemini-3.7-flash</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">100%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:100%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">85.6%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:52%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">91.9%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:73%;background:var(--accent-synth)"></span></span></span></td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-4o-transcribe</span></span></td>
+            <td class="num" style="color:var(--ink-faint)">— no diarization</td>
+            <td class="num" style="color:var(--ink-faint)">—</td>
+            <td class="num" style="color:var(--ink-faint)">—</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-4o-mini-transcribe</span></span></td>
+            <td class="num" style="color:var(--ink-faint)">— no diarization</td>
+            <td class="num" style="color:var(--ink-faint)">—</td>
+            <td class="num" style="color:var(--ink-faint)">—</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">whisper-1</span></span></td>
+            <td class="num" style="color:var(--ink-faint)">— no diarization</td>
+            <td class="num" style="color:var(--ink-faint)">—</td>
+            <td class="num" style="color:var(--ink-faint)">—</td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-xai)"></span><span class="model-name">grok-stt</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">84.0%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:47%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">73.7%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:12%;background:var(--accent-real)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">92.3%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:74%;background:var(--accent-synth)"></span></span></span></td>
+          </tr>
+          <tr>
+            <td><span class="model-cell"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="model-name">gpt-4o-transcribe-diarize</span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">99.8%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:99%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">85.2%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:51%;background:var(--accent-synth)"></span></span></span></td>
+            <td class="num tnum"><span class="wer-bar-wrap">84.6%<span class="wer-bar-track"><span class="wer-bar-fill" style="width:49%;background:var(--accent-synth)"></span></span></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption style="margin-top:0.9rem;">
+      Bars scale from 70% to 100% accuracy (not 0%) so the differences that matter are visible;
+      <code>grok-stt</code>'s 1949 bar is the one flagged red — a 22-point drop from its 2026
+      score, the widest swing of any model here, against <code>azure-fast-transcription</code>'s
+      flat ~92–96% across all three fixture types. Three models never emit a speaker label at
+      all, regardless of audio type.
+    </figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CHAPTER 6 — CATEGORY WINNERS -->
+  <!-- ============================================================ -->
+  <section class="chapter">
+    <div class="chapter-head">
+      <h2>Picking a model depends what you're optimizing for</h2>
+      <span class="chapter-num tnum">06 / 06</span>
+    </div>
+    <p class="dek">
+      There's no single "best" model in this fleet — the winner changes with the use case.
+      Eight categories, called strictly from the numbers above.
+    </p>
+
+    <div class="winner-grid">
+      <div class="winner-card">
+        <p class="category">Cost</p>
+        <p class="winner-name"><span class="vendor-dot" style="background:var(--v-xai)"></span><span class="name">grok-stt</span></p>
+        <p class="why">$0.0017/min — cheapest by a wide margin over the next-cheapest model.</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">Accuracy (WER, ignoring diarization)</p>
+        <p class="winner-name"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="name">gpt-audio</span></p>
+        <p class="why">Lowest WER on <i>every</i> fixture group — 5.1% synthetic, 29.8% on the 1949 clip, 10.7% on the 2026 clip. Wins outright, not just on average.</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">SRT / timed captions</p>
+        <p class="winner-name"><span class="vendor-dot" style="background:var(--v-azure)"></span><span class="name">azure-fast-transcription</span></p>
+        <p class="why">One of only 3 models with word-level timestamps at all, and the only one of those 3 with native diarization too — plus the flattest diarization accuracy across eras (92.3% on both real-world clips, no swing).</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">Noisy audio</p>
+        <p class="winner-name"><span class="vendor-dot" style="background:var(--v-google)"></span><span class="name">gemini-3.7-flash</span></p>
+        <p class="why">Tied for a perfect 0% WER on the white-noise clip with 4 other models — cheapest of that five-way tie, so it wins on tiebreak.</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">Multi-speaker diarization (clean audio)</p>
+        <p class="winner-name">
+          <span class="vendor-dot" style="background:var(--v-openai)"></span><span class="name">gpt-audio</span>
+          <span class="tie-with">tied with</span>
+          <span class="vendor-dot" style="background:var(--v-google)"></span><span class="name">gemini-3.7-flash</span>
+        </p>
+        <p class="why">Both hit 100% diarization accuracy on the clean synthetic 2–3 speaker dialogues.</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">Proper nouns &amp; jargon</p>
+        <p class="winner-name">
+          <span class="vendor-dot" style="background:var(--v-google)"></span><span class="name">gemini-3.7-flash</span>
+          <span class="tie-with">tied with</span>
+          <span class="vendor-dot" style="background:var(--v-openai)"></span><span class="name">gpt-4o-transcribe</span>
+        </p>
+        <p class="why">Lowest keyterm miss rate (10.8%) across the numbers/names and technical-jargon fixtures.</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">Latency-sensitive / real-time</p>
+        <p class="winner-name"><span class="vendor-dot" style="background:var(--v-xai)"></span><span class="name">grok-stt</span></p>
+        <p class="why">0.93s mean latency — 2× faster than the next-fastest model, ~24× faster than <code>gpt-4o-transcribe-diarize</code>.</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="category">Best value (accuracy per dollar)</p>
+        <p class="winner-name"><span class="vendor-dot" style="background:var(--v-openai)"></span><span class="name">gpt-4o-mini-transcribe</span></p>
+        <p class="why">$0.0018/min — nearly as cheap as grok-stt, but with far better real-world WER (11.3% vs. grok's 23.3% on the 2026 clip).</p>
+      </div>
+    </div>
+
+    <p class="callout">
+      <b>Cheap and fast isn't the same as cheap and accurate.</b> <code>grok-stt</code> wins Cost
+      and Latency here, but it also has the <i>worst</i> WER of any model on both real-world
+      clips (35.6% on the 1949 interview, 23.3% on the 2026 podcast) — the category it doesn't
+      win is the one most use cases actually care about most.
+    </p>
+  </section>
+
+  <footer class="colophon">
+    <span>recastr.io — transcription-benchmark</span>
+    <span class="tnum">generated from a 10× run, 2026-08-13</span>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var WER_CSV = "Model,Vendor,Synthetic WER,1949 Interview WER,2026 Interview WER,Latency (s),Cost per Minute (USD)\n" +
+    "gpt-audio,openai,0.0513,0.2981,0.1072,3.37,0.0214\n" +
+    "azure-fast-transcription,azure,0.0712,0.3312,0.1313,3.26,0.0060\n" +
+    "gemini-3.7-flash,google,0.0721,0.3394,0.2032,11.61,0.0021\n" +
+    "gpt-4o-transcribe,openai,0.0723,0.3366,0.2200,3.19,0.0035\n" +
+    "gpt-4o-mini-transcribe,openai,0.0787,0.3303,0.1127,1.94,0.0018\n" +
+    "whisper-1,openai,0.0848,0.3091,0.1221,4.02,0.0060\n" +
+    "grok-stt,xai,0.0893,0.3558,0.2328,0.93,0.0017\n" +
+    "gpt-4o-transcribe-diarize,openai,0.1541,0.3391,0.1570,22.10,0.0192\n";
+
+  var DIAR_CSV = "Model,Vendor,Synthetic Diarization Accuracy,1949 Interview Diarization Accuracy,2026 Interview Diarization Accuracy\n" +
+    "gpt-audio,openai,1.0000,0.8331,0.8846\n" +
+    "azure-fast-transcription,azure,0.9605,0.9231,0.9231\n" +
+    "gemini-3.7-flash,google,1.0000,0.8557,0.9190\n" +
+    "gpt-4o-transcribe,openai,,,\n" +
+    "gpt-4o-mini-transcribe,openai,,,\n" +
+    "whisper-1,openai,,,\n" +
+    "grok-stt,xai,0.8403,0.7368,0.9231\n" +
+    "gpt-4o-transcribe-diarize,openai,0.9975,0.8517,0.8458\n";
+
+  function browserDownload(filename, data) {
+    var blob = new Blob([data], { type: "text/csv;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function wireButton(buttonId, statusId, filename, csv) {
+    var btn = document.getElementById(buttonId);
+    var status = document.getElementById(statusId);
+    if (!btn) return;
+
+    btn.addEventListener("click", function () {
+      status.textContent = "";
+
+      if (window.__downloadMode === "browser") {
+        try {
+          browserDownload(filename, csv);
+          status.textContent = "Downloaded";
+        } catch (e) {
+          status.textContent = "Download unavailable";
+        }
+        return;
+      }
+
+      if (window.__downloadMode !== "claude" || !window.__claudeDownloads) return;
+      btn.disabled = true;
+      window.__claudeDownloads.save({ filename: filename, data: csv })
+        .then(function () {
+          status.textContent = "Saved";
+          btn.disabled = false;
+        })
+        .catch(function (err) {
+          var code = err && err.code;
+          if (code === "extension_not_enabled") {
+            var txtName = filename.replace(/\.csv$/, ".txt");
+            window.__claudeDownloads.save({ filename: txtName, data: csv })
+              .then(function () { status.textContent = "Saved as .txt"; btn.disabled = false; })
+              .catch(function () { status.textContent = "Download unavailable"; btn.disabled = false; });
+            return;
+          }
+          if (code === "declined") {
+            status.textContent = "Cancelled";
+          } else if (code === "rate_limited") {
+            status.textContent = "Try again in a moment";
+          } else {
+            status.textContent = "Download unavailable";
+          }
+          btn.disabled = false;
+        });
+    });
+  }
+
+  wireButton("dl-wer", "dl-wer-status", "transcription-benchmark-wer-latency-cost.csv", WER_CSV);
+  wireButton("dl-diar", "dl-diar-status", "transcription-benchmark-diarization.csv", DIAR_CSV);
+
+  (async function () {
+    // Inside the Claude artifact viewer, window.claude exists and direct <a download>
+    // links are inert -- must go through the downloads capability. Outside it (e.g. a
+    // plain GitHub Pages hosting of this same file), window.claude is undefined and a
+    // normal browser download works fine.
+    if (typeof window.claude === "undefined") {
+      window.__downloadMode = "browser";
+      document.getElementById("dl-wer").disabled = false;
+      document.getElementById("dl-diar").disabled = false;
+      return;
+    }
+    try {
+      var downloads = (typeof window.claude.use === "function")
+        ? await window.claude.use("downloads")
+        : null;
+      if (downloads) {
+        window.__downloadMode = "claude";
+        window.__claudeDownloads = downloads;
+        document.getElementById("dl-wer").disabled = false;
+        document.getElementById("dl-diar").disabled = false;
+      } else {
+        document.getElementById("dl-wer-status").textContent = "Unavailable in this view";
+        document.getElementById("dl-diar-status").textContent = "Unavailable in this view";
+      }
+    } catch (e) {
+      document.getElementById("dl-wer-status").textContent = "Unavailable in this view";
+      document.getElementById("dl-diar-status").textContent = "Unavailable in this view";
+    }
+  })();
+})();
+</script>
+</body>
+</html>
