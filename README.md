@@ -38,7 +38,8 @@ Two categories, on purpose:
    technology — one historical and public-domain, one modern and professionally recorded:
    - A ~2-minute excerpt from the Library of Congress American Folklife Center's June 11, 1949
      interview with Fountain Hughes, a formerly enslaved person, conducted by Hermond Norwood
-     ([loc.gov/item/afc1950037_000160](http://www.loc.gov/item/afc1950037_000160)).
+     ([loc.gov/item/afc1950037_afs09990a](https://www.loc.gov/item/afc1950037_afs09990a/),
+     call number AFC 1950/037: AFS 09990A).
    - A ~4.9-minute excerpt from NASA's "Houston We Have a Podcast," episode 414 ("Science in
      Space," aired March 2026), a modern two-speaker studio interview with an official
      transcript published by NASA
