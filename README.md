@@ -11,7 +11,7 @@ accuracy.
 Pipeline, model landscape, fixture set, scoring mechanism, results, and category winners, with
 downloadable CSVs.
 
-**Claude Code was used to help generate this code**
+**Claude Code was used to help generate this benchmark, do not take the results as gospel.**
 
 ## What's compared
 
