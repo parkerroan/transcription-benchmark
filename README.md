@@ -56,7 +56,7 @@ Two categories, on purpose:
 
 ## Results (2026-08-13, averaged over 10 runs)
 
-See `docs/benchmarks/multimodal-transcription-2026-08-13/` for the full aggregated JSON report
+See `results/multimodal-transcription-2026-08-13/` for the full aggregated JSON report
 and PNG charts. Every metric there is a mean across 10 independent full passes through every
 fixture and model (80 calls per model total), computed by `scripts/aggregate_benchmark_runs.py`,
 to smooth out per-call noise in LLM outputs and API latency — see "Running it" below for how to
@@ -136,5 +136,5 @@ scripts/
 tests/
   test_*.py                             # offline unit tests (no network/API keys)
   integration/fixtures/multimodal_eval/ # audio + manifest.jsonl consumed by the benchmark
-docs/benchmarks/                        # committed report.json + charts from past runs
+results/                                # committed report.json + charts from past runs
 ```
