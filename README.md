@@ -4,6 +4,9 @@ Companion benchmark for a blog post comparing dedicated speech-to-text models ag
 multimodal chat models on cost, word error rate (WER), latency, and speaker diarization
 accuracy.
 
+> This work was completed to provide data for evaluating transcription services for
+> [Recastr](https://recastr.io).
+
 ## What's compared
 
 **Dedicated ASR** (built specifically for transcription):
